@@ -25,12 +25,12 @@
         'kernel',
         'tab',
         'img'
-    ].map(v => `css/${v}.css`).map(rpgen3.addCSS));
-    $('<h2>').appendTo(head).text('動画の読み込み');
+    ].map(v => `https://rpgen3.github.io/spatialFilter/css/${v}.css`).map(rpgen3.addCSS));
+    $('<h2>').appendTo(head).text('動画をmidiに変換します。');
     const video = new class {
         constructor(){
             const html = $('<div>').appendTo(head).addClass('container');
-            $('<h3>').appendTo(html).text('動画を入力');
+            $('<h3>').appendTo(html).text('処理する動画の設定');
             this.input = $('<dl>').appendTo(html);
             this.output = $('<div>').appendTo(html);
             this.video = null;
