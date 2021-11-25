@@ -43,8 +43,8 @@
         }
         get wh(){
             return [
-                video.videoWidth,
-                video.videoHeight
+                this.video.videoWidth,
+                this.video.videoHeight
             ];
         }
         async load(url){
@@ -79,6 +79,12 @@
             this.output = $('<div>').appendTo(html);
             this.img = null;
             this.bothEnd = $('<div>').appendTo(html);
+        }
+        get wh(){
+            return [
+                this.img.naturalWidth,
+                this.img.naturalHeight
+            ];
         }
         async load(url){
             $(this.img = await rpgen3.loadSrc('img', url)).appendTo(this.output.empty());
@@ -136,7 +142,7 @@
         const [x, y] = bothEnd.left;
     };
     const calcMid = () => {
-        const [w, h] = video.wh,
+        const [w, h] = image.wh,
               {cv, ctx} = rpgen3.makeCanvas(w, h);
         ctx.drawImage(image.img, 0, 0);
         const {data} = ctx.getImageData(0, 0, w, h),
