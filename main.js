@@ -20,12 +20,15 @@
         'util'
     ].map(v => `https://rpgen3.github.io/mylib/export/${v}.mjs`));
     Promise.all([
-        'container',
-        'table',
-        'kernel',
-        'tab',
-        'img'
-    ].map(v => `https://rpgen3.github.io/spatialFilter/css/${v}.css`).map(rpgen3.addCSS));
+        [
+            'container',
+            'tab',
+            'img'
+        ].map(v => `https://rpgen3.github.io/spatialFilter/css/${v}.css`),
+        [
+            'video'
+        ].map(v => `https://rpgen3.github.io/video2midi/css/${v}.css`)
+    ].flat().map(rpgen3.addCSS));
     $('<h2>').appendTo(head).text('動画をmidiに変換します。');
     const video = new class {
         constructor(){
@@ -37,6 +40,18 @@
         }
         async load(url){
             $(this.video = await rpgen3.loadSrc('video', url)).appendTo(this.output.empty());
+            const {video} = this;
+            video.controls = true;
+            const width = video.videoWidth,
+                  height = video.videoHeight,
+                  [cv, ctx] = rpgen3.makeCanvas(width, height);
+            $('<button>').text('現在のシーンを保存').on('click', () => {
+                ctx.drawImage(video, 0, 0);
+                $('<a>').attr({
+                    href: cv.toDataURL(),
+                    download: 'video2midi.png'
+                }).get(0).click();
+            }).appendTo($('<div>').appendTo(this.output));
         }
     };
     {
