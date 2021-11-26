@@ -55,10 +55,7 @@
             const {cv, ctx} = rpgen3.makeCanvas(this.w, this.h);
             rpgen3.addBtn($('<div>').appendTo(this.output), '現在のシーンを保存', () => {
                 ctx.drawImage(video, 0, 0);
-                $('<a>').attr({
-                    href: cv.toDataURL(),
-                    download: 'video2midi.png'
-                }).get(0).click();
+                rpgen3.download(cv.toDataURL(), 'video2midi.png');
             });
         }
         async seek(x){
@@ -255,12 +252,66 @@
         mid.push(end);
         return mid;
     };
+    const config = new class {
+        constructor(){
+            const html = $('<div>').appendTo(main).addClass('container');
+            $('<h3>').appendTo(html).text('MIDI出力の設定');
+            this.bpm = $('<dl>').appendTo(html);
+            this.tone = $('<dl>').appendTo(html);
+        }
+    };
+    const tone = new class {
+        constructor(){
+            const html = config.tone;
+            this.input = rpgen3.addSelect(html, {
+                label: '鍵盤の最も低い音',
+                save: true,
+                list: rpgen4.piano.note
+            });
+        }
+        get value(){
+            return rpgen4.piano.note2index(this.input());
+        }
+    };
+    const bpm = new class {
+        constructor(){
+            const html = config.bpm;
+            this.min = 40;
+            this.max = 300;
+            this.old = 0;
+            this.ar = [];
+            this.input = rpgen3.addInputNum(html,{
+                label: 'BPM',
+                save: true,
+                value: 140,
+                min: this.min,
+                max: this.max
+            });
+            rpgen3.addBtn(html, 'タップでBPM計測', () => this.update());
+            rpgen3.addBtn(html, '計測リセット', () => this.reset());
+        }
+        update(){
+            const {min, max} = this;
+            const now = performance.now(),
+                  bpm = 1 / (now - this.old) * 1000 * 60;
+            this.old = now;
+            if(bpm < min || bpm > max) return;
+            this.ar.push(bpm);
+            this.input(this.ar.reduce((p,x) => p + x) / this.ar.length);
+        }
+        get value(){
+            return this.input();
+        }
+    };
     rpgen3.addBtn(main, 'MIDIを出力', () => outputMidi());
     const outputMidi = () => {
         const arr = [];
         HeaderChunks(arr);
-        for(const heap of heaps) TrackChunks(arr, heap);
-        return URL.createObjectURL(new Blob([new Uint8Array(arr).buffer], {type: 'audio/midi'}));
+        TrackChunks(arr);
+        rpgen3.donwload(
+            URL.createObjectURL(new Blob([new Uint8Array(arr).buffer], {type: 'audio/midi'})),
+            'video2midi.mid'
+        );
     };
     const to2byte = n => [(n & 0xff00) >> 8, n & 0xff],
           to3byte = n => [(n & 0xff0000) >> 16, ...to2byte(n)],
@@ -268,30 +319,35 @@
     const HeaderChunks = arr => {
         arr.push(0x4D, 0x54, 0x68, 0x64); // チャンクタイプ(4byte)
         arr.push(...to4byte(6)); // データ長(4byte)
-        const {formatType, tracks, timeDivision} = g_midi;
+        const formatType = 1,
+              tracks = 1,
+              timeDivision = 0x01E0;
         for(const v of [
             formatType,
             tracks,
             timeDivision
         ]) arr.push(...to2byte(v));
+        g_timeDivision = timeDivision;
     };
-    const TrackChunks = (arr, heap) => {
+    let g_timeDivision = -1;
+    const TrackChunks = arr => {
         arr.push(0x4D, 0x54, 0x72, 0x6B); // チャンクタイプ(4byte)
         const a = [];
         a.push(...DeltaTime(0));
-        a.push(0xFF, 0x51, 0x03, ...to3byte(60000000 / inputBPM)); // テンポ
+        a.push(0xFF, 0x51, 0x03, ...to3byte(6E7 / bpm.value)); // テンポ
         let currentTime = 0;
-        while(heap.length) {
-            const {note, velocity, start} = heap.pop();
-            a.push(...DeltaTime(start - currentTime));
-            a.push(0x90, note, velocity);
-            currentTime = start;
+        const lower = tone.value;
+        for(const {index, flag, time} of g_midi) {
+            a.push(...DeltaTime(sec2delta(time - currentTime)));
+            a.push(0x90, lower + index, flag ? 0x7F : 0x00);
+            currentTime = time;
         }
         a.push(...DeltaTime(0));
         a.push(0xFF, 0x2F, 0x00); // トラックチャンクの終わりを示す
         arr.push(...to4byte(a.length)); // データ長(4byte)
         for(const v of a) arr.push(v);
     };
+    const sec2delta = sec => sec / (1000 * 60) * bpm.value * g_timeDivision;
     const DeltaTime = n => { // 可変長数値表現
         if(n === 0) return [0];
         const arr = [];
