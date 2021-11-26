@@ -89,13 +89,19 @@
                 label: '終了時間[sec]',
                 save: true
             });
+            this.fps = rpgen3.addInputStr(input, {
+                label: 'フレームレート[fps]',
+                save: true,
+                value: 30
+            });
         }
         get any(){
-            const [start, end] = [
+            const [start, end, fps] = [
                 this.start,
-                this.end
+                this.end,
+                this.fps
             ].map(v => v()).map(rpgen3.toHan).map(v => v.match(/[0-9]+/)?.[0]).map(Number);
-            return {start, end};
+            return {start, end, fps};
         }
     };
     const image = new class {
@@ -200,11 +206,14 @@
             lums.push(luminance(...d.subarray(i, i + 3)));
         }
         const isNoteOn = [...keyboard.slice().fill(false)],
-              midi = [];
-        for(let t = times.start + 1; t <= times.end; t += 0.01) {
+              midi = [],
+              frameRate = 1 / times.fps,
+              tEnd = Math.min(times.end, video.video.duration);
+        for(let t = times.start + 1; t <= tEnd; t += frameRate) {
+            msg.print(`${(t * 100 | 0) / 100}/${times.end}`);
             await video.seek(t);
-            await msg.print(`${(t * 100 | 0) / 100}/${times.end}`);
-            const d = f();
+            const {currentTime} = video.video,
+                  d = f();
             for(const [i, v] of keyboard.entries()) {
                 const _i = rpgen3.toI(w, v, horizon) << 2,
                       lum = luminance(...d.subarray(_i, _i + 3)),
@@ -212,13 +221,13 @@
                 if(diff < 10) { // 入力無し
                     if(isNoteOn[i]) {
                         isNoteOn[i] = false; // ON → OFF
-                        midi.push(new Note(i, false, t));
+                        midi.push(new Note(i, false, currentTime));
                     }
                     continue;
                 }
                 if(isNoteOn[i]) continue;
                 isNoteOn[i] = true; // OFF → ON
-                midi.push(new Note(i, true, t));
+                midi.push(new Note(i, true, currentTime));
             }
         }
         g_midi = midi;
@@ -340,9 +349,9 @@
         a.push(0xFF, 0x51, 0x03, ...to3byte(6E7 / bpm.value)); // テンポ
         let currentTime = 0;
         const lower = tone.value;
-        let flag = false;
+        let isFirst = true;
         for(const {index, flag, time} of g_midi) {
-            const t = flag ? sec2delta(time - currentTime) : ((flag = true), 0);
+            const t = isFirst ? ((isFirst = false), 0) : sec2delta(time - currentTime);
             a.push(...DeltaTime(t));
             a.push(0x90, lower + index, flag ? 0x7F : 0x00);
             currentTime = time;
