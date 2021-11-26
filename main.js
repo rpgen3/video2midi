@@ -179,10 +179,11 @@
             this.time = time;
         }
     }
+    const luminance = (r, g, b) => r * 0.298912 + g * 0.586611 + b * 0.114478;
     let g_midi = [];
     const getMidi = async () => {
         await msg.print('鍵盤の座標を取得');
-        const mid = calcMid(),
+        const keyboard = calcXYpianoKeyboard(),
               times = time.any;
         await video.seek(times.start);
         const {w, h} = video,
@@ -193,22 +194,22 @@
         };
         const {start, end, horizon} = bothEnd.any,
               d = f(),
-              _mid = [];
-        for(const v of mid) {
+              lums = [];
+        for(const v of keyboard) {
             const i = rpgen3.toI(w, v, horizon) << 2;
-            _mid.push(d.subarray(i, i + 3));
+            lums.push(luminance(...d.subarray(i, i + 3)));
         }
-        const isNoteOn = [...mid.slice().fill(false)],
+        const isNoteOn = [...keyboard.slice().fill(false)],
               midi = [];
-        for(let t = times.start + 1; t <= times.end; t++) {
+        for(let t = times.start + 1; t <= times.end; t += 0.01) {
             await video.seek(t);
-            await msg.print(`${times.start}/${times.end}`);
+            await msg.print(`${(t * 100 | 0) / 100}/${times.end}`);
             const d = f();
-            for(const [i, v] of mid.entries()) {
+            for(const [i, v] of keyboard.entries()) {
                 const _i = rpgen3.toI(w, v, horizon) << 2,
-                      [r, g, b] = d.subarray(_i, _i + 3),
-                      [R, G, B] = _mid[i];
-                if(r === R && g === G && b === B) { // 入力無し
+                      lum = luminance(...d.subarray(_i, _i + 3)),
+                      diff = Math.abs(lum - lums[i]);
+                if(diff < 10) { // 入力無し
                     if(isNoteOn[i]) {
                         isNoteOn[i] = false; // ON → OFF
                         midi.push(new Note(i, false, t));
@@ -223,7 +224,7 @@
         g_midi = midi;
         await msg.print('採譜完了');
     };
-    const calcMid = () => {
+    const calcXYpianoKeyboard = () => {
         const {w, h} = image,
               {cv, ctx} = rpgen3.makeCanvas(w, h);
         ctx.drawImage(image.img, 0, 0);
@@ -236,9 +237,8 @@
               diff = end - start,
               minus = diff > 0 ? 1 : -1;
         for(const i of Array(diff).keys()) {
-            if(data[toI[toI(start + i * minus)]]) { // white
-                if(!isEdge) continue;
-                isEdge = false;
+            if(data[toI(start + i * minus) << 2]) { // white
+                if(isEdge) isEdge = false;
             }
             else { // black
                 if(isEdge) continue;
@@ -246,11 +246,14 @@
                 edge.push(i);
             }
         }
-        const mid = [];
-        for(let i = 1; i < edge.length; i++) mid.push(edge[i] - edge[i - 1] >> 1);
-        mid.unshift(start);
-        mid.push(end);
-        return mid;
+        const ar = [];
+        for(let i = 1; i < edge.length; i++) {
+            const e = edge[i - 1];
+            ar.push(e + minus * (edge[i] - e >> 1));
+        };
+        ar.unshift(start);
+        ar.push(end);
+        return ar;
     };
     const config = new class {
         constructor(){
@@ -308,7 +311,7 @@
         const arr = [];
         HeaderChunks(arr);
         TrackChunks(arr);
-        rpgen3.donwload(
+        rpgen3.download(
             URL.createObjectURL(new Blob([new Uint8Array(arr).buffer], {type: 'audio/midi'})),
             'video2midi.mid'
         );
@@ -337,8 +340,10 @@
         a.push(0xFF, 0x51, 0x03, ...to3byte(6E7 / bpm.value)); // テンポ
         let currentTime = 0;
         const lower = tone.value;
+        let flag = false;
         for(const {index, flag, time} of g_midi) {
-            a.push(...DeltaTime(sec2delta(time - currentTime)));
+            const t = flag ? sec2delta(time - currentTime) : ((flag = true), 0);
+            a.push(...DeltaTime(t));
             a.push(0x90, lower + index, flag ? 0x7F : 0x00);
             currentTime = time;
         }
@@ -347,7 +352,7 @@
         arr.push(...to4byte(a.length)); // データ長(4byte)
         for(const v of a) arr.push(v);
     };
-    const sec2delta = sec => sec / (1000 * 60) * bpm.value * g_timeDivision;
+    const sec2delta = sec => sec / (60 / (bpm.value * g_timeDivision));
     const DeltaTime = n => { // 可変長数値表現
         if(n === 0) return [0];
         const arr = [];
