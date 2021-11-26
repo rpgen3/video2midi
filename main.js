@@ -347,14 +347,21 @@
         const a = [];
         a.push(...DeltaTime(0));
         a.push(0xFF, 0x51, 0x03, ...to3byte(6E7 / bpm.value)); // テンポ
-        let currentTime = 0;
-        const lower = tone.value;
-        let isFirst = true;
+        let currentTime = 0,
+            isFirst = true;
+        const lower = tone.value,
+              m = new Map;
         for(const {index, flag, time} of g_midi) {
-            const t = isFirst ? ((isFirst = false), 0) : sec2delta(time - currentTime);
+            const t = isFirst ? ((isFirst = false), 0) : sec2delta(time - currentTime),
+                  tone = lower + index;
+            m.set(tone, flag);
             a.push(...DeltaTime(t));
-            a.push(0x90, lower + index, flag ? 0x7F : 0x00);
+            a.push(0x90, tone, flag ? 0x7F : 0x00);
             currentTime = time;
+        }
+        for(const [k, v] of m) if(v) {
+            a.push(...DeltaTime(0));
+            a.push(0x90, k, 0x00);
         }
         a.push(...DeltaTime(0));
         a.push(0xFF, 0x2F, 0x00); // トラックチャンクの終わりを示す
