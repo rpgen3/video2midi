@@ -210,10 +210,10 @@
               frameRate = 1 / times.fps,
               tEnd = Math.min(times.end, video.video.duration);
         for(let t = times.start + 1; t <= tEnd; t += frameRate) {
-            msg.print(`${(t * 100 | 0) / 100}/${times.end}`);
             await video.seek(t);
-            const {currentTime} = video.video,
-                  d = f();
+            const {currentTime} = video.video;
+            msg.print(`${(currentTime * 100 | 0) / 100}/${tEnd}`);
+            const d = f();
             for(const [i, v] of keyboard.entries()) {
                 const _i = rpgen3.toI(w, v, horizon) << 2,
                       lum = luminance(...d.subarray(_i, _i + 3)),
