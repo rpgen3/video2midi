@@ -41,23 +41,29 @@
             this.output = $('<div>').appendTo(html);
             this.video = null;
         }
-        get wh(){
-            return [
-                this.video.videoWidth,
-                this.video.videoHeight
-            ];
+        get w(){
+            return this.video.videoWidth;
+        }
+        get h(){
+            return this.video.videoHeight;
         }
         async load(url){
             $(this.video = await rpgen3.loadSrc('video', url)).appendTo(this.output.empty());
             const {video} = this;
             video.controls = true;
-            const {cv, ctx} = rpgen3.makeCanvas(...this.wh);
+            const {cv, ctx} = rpgen3.makeCanvas(this.w, this.h);
             rpgen3.addBtn($('<div>').appendTo(this.output), '現在のシーンを保存', () => {
                 ctx.drawImage(video, 0, 0);
                 $('<a>').attr({
                     href: cv.toDataURL(),
                     download: 'video2midi.png'
                 }).get(0).click();
+            });
+        }
+        async seek(x){
+            return new Promise(resolve => {
+                video.addEventListener('seeked', resolve, {once: true});
+                video.currentTime = x;
             });
         }
     };
@@ -80,11 +86,11 @@
             this.img = null;
             this.bothEnd = $('<div>').appendTo(html);
         }
-        get wh(){
-            return [
-                this.img.naturalWidth,
-                this.img.naturalHeight
-            ];
+        get w(){
+            return this.img.naturalWidth;
+        }
+        get h(){
+            return this.img.naturalHeight;
         }
         async load(url){
             $(this.img = await rpgen3.loadSrc('img', url)).appendTo(this.output.empty());
@@ -104,26 +110,26 @@
         constructor(){
             const html = image.bothEnd;
             $('<h3>').appendTo(html).text('両端の鍵盤の中心の座標を入力');
-            this.input = $('<dl>').appendTo(html);
-            this._left = rpgen3.addInputStr(this.input, {
+            const input = $('<dl>').appendTo(html);
+            this.way = rpgen3.addSelect(input, {
+                label: '鍵盤の並ぶ向き',
+                list: {
+                    '水平': true,
+                    '垂直': false
+                }
+            });
+            this.datum = rpgen3.addInputNum(input, {
+                label: '基準線の座標',
+                save: true
+            });
+            this.left = rpgen3.addInputNum(input, {
                 label: '左端の鍵盤の中心座標',
                 save: true
             });
-            this._right = rpgen3.addInputStr(this.input, {
+            this.right = rpgen3.addInputNum(input, {
                 label: '右端の鍵盤の中心座標',
                 save: true
             });
-        }
-        _2(str){
-            const m = rpgen3.toHan(str).match(/[0-9]+/g);
-            if(m) return [m.map(Number), 0].flat().slice(0, 2);
-            else return [0, 0];
-        }
-        get left(){
-            return this._2(this._left());
-        }
-        get right(){
-            return this._2(this._right());
         }
     };
     rpgen3.addBtn(main, 'start', () => start());
@@ -139,18 +145,22 @@
     const start = async () => {
         await msg.print('鍵盤の座標を取得');
         const mid = calcMid();
-        const [x, y] = bothEnd.left;
+
     };
     const calcMid = () => {
-        const [w, h] = image.wh,
+        const {w, h} = image,
               {cv, ctx} = rpgen3.makeCanvas(w, h);
         ctx.drawImage(image.img, 0, 0);
         const {data} = ctx.getImageData(0, 0, w, h),
-              {left, right} = bothEnd,
+              way = bothEnd.way(),
+              datum = bothEnd.datum(),
+              left = bothEnd.left(),
+              right = bothEnd.right(),
               edge = [];
         let isEdge = false;
-        for(let x = left[0]; x < right[0]; x++) {
-            if(data[rpgen3.toI(w, x, left[1])]) { // white
+        const toI = x => rpgen3.toI(w, ...(way ? [x, datum] : [datum, x]));
+        for(let x = left; x < right; x++) {
+            if(data[toI(x)]) { // white
                 if(!isEdge) continue;
                 isEdge = false;
             }
@@ -162,8 +172,8 @@
         }
         const mid = [];
         for(let i = 1; i < edge.length; i++) mid.push(edge[i] - edge[i - 1] >> 1);
-        mid.unshift(left[0]);
-        mid.push(right[0]);
+        mid.unshift(left);
+        mid.push(right);
         return mid;
     };
 })();
