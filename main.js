@@ -302,6 +302,10 @@
             rpgen3.addBtn(html, 'タップでBPM計測', () => this.update());
             rpgen3.addBtn(html, '計測リセット', () => this.reset());
         }
+        reset(){
+            this.old = 0;
+            this.ar = [];
+        }
         update(){
             const {min, max} = this;
             const now = performance.now(),
