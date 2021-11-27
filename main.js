@@ -13,16 +13,22 @@
     $('<h1>').appendTo(head).text('video2midi');
     $('<h2>').appendTo(head).text('動画をmidiに変換します。');
     const rpgen3 = await importAll([
-        'input',
-        'css',
-        'url',
-        'hankaku',
-        'sample',
-        'util'
-    ].map(v => `https://rpgen3.github.io/mylib/export/${v}.mjs`));
-    const rpgen4 = await importAll([
-        'piano'
-    ].map(v => `https://rpgen3.github.io/midi/mjs/${v}.mjs`));
+        [
+            'input',
+            'css',
+            'url',
+            'hankaku',
+            'sample',
+            'util'
+        ].map(v => `https://rpgen3.github.io/mylib/export/${v}.mjs`),
+        [
+            'piano'
+        ].map(v => `https://rpgen3.github.io/midi/mjs/${v}.mjs`),
+        [
+            'rgb2hsl'
+        ].map(v => `https://rpgen3.github.io/hue/mjs/${v}.mjs`)
+    ].flat());
+    const {piano, rgb2hsl} = rpgen3;
     Promise.all([
         [
             'container',
@@ -168,6 +174,27 @@
             return {start, end, horizon};
         }
     };
+    const saifu = new class {
+        constructor(){
+            const html = $('<div>').appendTo(main).addClass('container');
+            $('<h3>').appendTo(html).text('採譜オプション');
+            const input = $('<dl>').appendTo(html);
+            this.limitLum = rpgen3.addInputNum(input, {
+                label: '輝度の差の閾値',
+                save: true,
+                value: 10,
+                min: 0,
+                max: 255
+            });
+            this.limitHue = rpgen3.addInputNum(input, {
+                label: '色相の差の閾値',
+                save: true,
+                value: 10,
+                min: 0,
+                max: 180
+            });
+        }
+    };
     rpgen3.addBtn(main, '採譜開始', () => getMidi());
     const msg = new class {
         constructor(){
@@ -206,12 +233,15 @@
             lums.push(luminance(...d.subarray(i, i + 3)));
         }
         const isNoteOn = [...keyboard.slice().fill(false)],
-              lumsLast = keyboard.slice().fill(-1),
-              _lumsLast = keyboard.slice().fill(-1),
+              hueLast = keyboard.slice(),
+              _hueLast = keyboard.slice(),
               midi = [],
               frameRate = 1 / times.fps,
-              tEnd = Math.min(times.end, video.video.duration);
-        const diff = (a, b) => Math.abs(a - b);
+              tEnd = Math.min(times.end, video.video.duration),
+              limitLum = saifu.limitLum(),
+              limitHue = saifu.limitHue(),
+              diff = (a, b) => Math.abs(a - b),
+              diffHue = (a, b) => diff(180, diff(180, diff(a, b)));
         for(let t = times.start + 1; t <= tEnd; t += frameRate) {
             await video.seek(t);
             const {currentTime} = video.video;
@@ -219,17 +249,19 @@
             const d = f();
             for(const [i, v] of keyboard.entries()) {
                 const _i = rpgen3.toI(w, v, horizon) << 2,
-                      lum = luminance(...d.subarray(_i, _i + 3));
-                if(diff(lum, lums[i]) > 10) {
+                      [r, g, b] = d.subarray(_i, _i + 3),
+                      lum = luminance(r, g, b);
+                if(diff(lum, lums[i]) > limitLum) {
+                    const hue = rgb2hsl(r, g, b);
                     if(!isNoteOn[i]) {
                         isNoteOn[i] = true; // OFF → ON
                         midi.push(new Note(i, true, currentTime));
-                        _lumsLast[i] = lumsLast[i] = lum;
+                        _hueLast[i] = hueLast[i] = hue;
                         continue;
                     }
-                    if(diff(lum, lumsLast[i]) > 10) {
-                        if(diff(lum, _lumsLast[i]) > 10) {
-                            _lumsLast[i] = lum;
+                    if(diffHue(hue, hueLast[i]) > limitHue) {
+                        if(diffHue(hue, _hueLast[i]) > limitHue) {
+                            _hueLast[i] = hue;
                             midi.push(new Note(i, false, currentTime));
                             midi.push(new Note(i, true, currentTime));
                         }
@@ -291,11 +323,11 @@
             this.input = rpgen3.addSelect(html, {
                 label: '鍵盤の最も低い音',
                 save: true,
-                list: rpgen4.piano.note
+                list: piano.note
             });
         }
         get value(){
-            return rpgen4.piano.note2index(this.input());
+            return piano.note2index(this.input());
         }
     };
     const bpm = new class {
