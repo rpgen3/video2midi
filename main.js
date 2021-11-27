@@ -115,6 +115,7 @@
         constructor(){
             const html = $('<div>').appendTo(main).addClass('container');
             $('<h3>').appendTo(html).text('二値化した鍵盤の画像の設定');
+            rpgen3.addA(html, 'https://rpgen3.github.io/spatialFilter/', '二値化画像の作成はこちら');
             this.input = $('<dl>').appendTo(html);
             this.output = $('<div>').appendTo(html);
             this.img = null;
@@ -200,7 +201,9 @@
     rpgen3.addBtn(main, '採譜開始', async () => {
         if(started) return;
         started = true;
+        const now = performance.now();
         await getMidi();
+        msg.print(`採譜が完了しました。(所要時間：${rpgen3.getTime(performance.now() - now)})`);
         started = false;
     });
     const msg = new class {
@@ -282,7 +285,6 @@
                 }
             }
         }
-        await msg.print('採譜完了');
     };
     const calcXYpianoKeyboard = () => {
         const {w, h} = image,
