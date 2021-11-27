@@ -236,13 +236,13 @@
         const isNoteOn = [...keyboard.slice().fill(false)],
               hueLast = keyboard.slice(),
               _hueLast = keyboard.slice(),
-              midi = [],
               frameRate = 1 / times.fps,
               tEnd = Math.min(times.end, video.video.duration),
               limitLum = saifu.limitLum(),
               limitHue = saifu.limitHue(),
               diff = (a, b) => Math.abs(a - b),
               diffHue = (a, b) => diff(180, diff(180, diff(a, b)));
+        g_midi = [];
         for(let t = times.start + 1; t <= tEnd; t += frameRate) {
             await video.seek(t);
             const {currentTime} = video.video;
@@ -256,27 +256,26 @@
                     const hue = rgb2hsl(r, g, b)[0];
                     if(!isNoteOn[i]) {
                         isNoteOn[i] = true; // OFF → ON
-                        midi.push(new Note(i, true, currentTime));
+                        g_midi.push(new Note(i, true, currentTime));
                         _hueLast[i] = hueLast[i] = hue;
                         continue;
                     }
                     if(diffHue(hue, hueLast[i]) > limitHue) {
                         if(diffHue(hue, _hueLast[i]) > limitHue) {
                             _hueLast[i] = hue;
-                            midi.push(new Note(i, false, currentTime));
-                            midi.push(new Note(i, true, currentTime));
+                            g_midi.push(new Note(i, false, currentTime));
+                            g_midi.push(new Note(i, true, currentTime));
                         }
                     }
                 }
                 else {
                     if(isNoteOn[i]) {
                         isNoteOn[i] = false; // ON → OFF
-                        midi.push(new Note(i, false, currentTime));
+                        g_midi.push(new Note(i, false, currentTime));
                     }
                 }
             }
         }
-        g_midi = midi;
         await msg.print('採譜完了');
     };
     const calcXYpianoKeyboard = () => {
