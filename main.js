@@ -34,7 +34,7 @@
             'container',
             'tab',
             'img',
-            'button'
+            'btn'
         ].map(v => `https://rpgen3.github.io/spatialFilter/css/${v}.css`),
         [
             'video'
@@ -63,7 +63,7 @@
             rpgen3.addBtn($('<div>').appendTo(this.output), '現在のシーンを保存', () => {
                 ctx.drawImage(video, 0, 0);
                 rpgen3.download(cv.toDataURL(), 'video2midi.png');
-            });
+            }).addClass('btn');
         }
         async seek(x){
             const {video} = this;
@@ -205,7 +205,7 @@
         await getMidi();
         msg.print(`採譜が完了しました。(所要時間：${rpgen3.getTime(performance.now() - now)})`);
         started = false;
-    });
+    }).addClass('btn');
     const msg = new class {
         constructor(){
             this.html = $('<div>').appendTo(main);
@@ -352,8 +352,8 @@
                 min: this.min,
                 max: this.max
             });
-            rpgen3.addBtn(html, 'タップでBPM計測', () => this.update());
-            rpgen3.addBtn(html, '計測リセット', () => this.reset());
+            rpgen3.addBtn(html, 'タップでBPM計測', () => this.update()).addClass('btn');
+            rpgen3.addBtn(html, '計測リセット', () => this.reset()).addClass('btn');
         }
         reset(){
             this.old = 0;
@@ -372,7 +372,7 @@
             return this.input();
         }
     };
-    rpgen3.addBtn(main, 'MIDIを出力', () => outputMidi());
+    rpgen3.addBtn(main, 'MIDIを出力', () => outputMidi()).addClass('btn');
     const outputMidi = () => {
         const arr = [];
         HeaderChunks(arr);
