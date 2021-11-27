@@ -237,7 +237,7 @@
             return ctx.getImageData(0, 0, w, h).data;
         };
         const {start, end, horizon} = bothEnd.any,
-              {toI, minus} = calcAny(),
+              {toI} = calcAny(),
               d = f(),
               lums = [];
         for(const v of keyboard) {
