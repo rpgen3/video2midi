@@ -33,7 +33,8 @@
         [
             'container',
             'tab',
-            'img'
+            'img',
+            'button'
         ].map(v => `https://rpgen3.github.io/spatialFilter/css/${v}.css`),
         [
             'video'
@@ -182,14 +183,14 @@
             this.limitLum = rpgen3.addInputNum(input, {
                 label: '輝度の差の閾値',
                 save: true,
-                value: 10,
+                value: 45,
                 min: 0,
                 max: 255
             });
             this.limitHue = rpgen3.addInputNum(input, {
                 label: '色相の差の閾値',
                 save: true,
-                value: 10,
+                value: 15,
                 min: 0,
                 max: 180
             });
@@ -252,7 +253,7 @@
                       [r, g, b] = d.subarray(_i, _i + 3),
                       lum = luminance(r, g, b);
                 if(diff(lum, lums[i]) > limitLum) {
-                    const hue = rgb2hsl(r, g, b);
+                    const hue = rgb2hsl(r, g, b)[0];
                     if(!isNoteOn[i]) {
                         isNoteOn[i] = true; // OFF → ON
                         midi.push(new Note(i, true, currentTime));
@@ -340,7 +341,7 @@
             this.input = rpgen3.addInputNum(html,{
                 label: 'BPM',
                 save: true,
-                value: 140,
+                value: 135,
                 min: this.min,
                 max: this.max
             });
