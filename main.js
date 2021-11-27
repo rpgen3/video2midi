@@ -222,7 +222,8 @@
             this.time = time;
         }
     }
-    const luminance = (r, g, b) => r * 0.298912 + g * 0.586611 + b * 0.114478;
+    const luminance = (r, g, b) => r * 0.298912 + g * 0.586611 + b * 0.114478,
+          diff = (a, b) => Math.abs(a - b);
     let g_midi = [];
     const getMidi = async () => {
         await msg.print('鍵盤の座標を取得');
@@ -236,10 +237,11 @@
             return ctx.getImageData(0, 0, w, h).data;
         };
         const {start, end, horizon} = bothEnd.any,
+              {toI, minus} = calcAny(),
               d = f(),
               lums = [];
         for(const v of keyboard) {
-            const i = rpgen3.toI(w, v, horizon) << 2;
+            const i = toI(v);
             lums.push(luminance(...d.subarray(i, i + 3)));
         }
         const isNoteOn = [...keyboard.slice().fill(false)],
@@ -249,16 +251,15 @@
               tEnd = Math.min(times.end, video.video.duration),
               limitLum = saifu.limitLum(),
               limitHue = saifu.limitHue(),
-              diff = (a, b) => Math.abs(a - b),
               diffHue = (a, b) => diff(180, diff(180, diff(a, b)));
         g_midi = [];
-        for(let t = times.start + 1; t <= tEnd; t += frameRate) {
+        for(let t = times.start; t <= tEnd; t += frameRate) {
             await video.seek(t);
             const {currentTime} = video.video;
             msg.print(`${(currentTime * 100 | 0) / 100}/${tEnd}`);
             const d = f();
             for(const [i, v] of keyboard.entries()) {
-                const _i = rpgen3.toI(w, v, horizon) << 2,
+                const _i = toI(v),
                       [r, g, b] = d.subarray(_i, _i + 3),
                       lum = luminance(r, g, b);
                 if(diff(lum, lums[i]) > limitLum) {
@@ -286,6 +287,18 @@
             }
         }
     };
+    const calcAny = () => {
+        const way = bothEnd.way(),
+              {start, end, horizon} = bothEnd.any,
+              {w} = video,
+              diff = end - start,
+              minus = diff > 0 ? 1 : -1;
+        const toI = i => {
+            const v = start + minus * i;
+            return rpgen3.toI(w, ...(way ? [v, horizon] : [horizon, v])) << 2;
+        };
+        return {toI, minus};
+    };
     const calcXYpianoKeyboard = () => {
         const {w, h} = image,
               {cv, ctx} = rpgen3.makeCanvas(w, h);
@@ -294,12 +307,10 @@
               way = bothEnd.way(),
               {start, end, horizon} = bothEnd.any,
               edge = [];
+        const {toI, minus} = calcAny();
         let isEdge = false;
-        const toI = x => rpgen3.toI(w, ...(way ? [x, horizon] : [horizon, x])),
-              diff = end - start,
-              minus = diff > 0 ? 1 : -1;
-        for(const i of Array(Math.abs(diff)).keys()) {
-            if(data[toI(start + i * minus) << 2]) { // white
+        for(const i of Array(diff(start, end)).keys()) {
+            if(data[toI(i)]) { // white
                 if(isEdge) isEdge = false;
             }
             else { // black
