@@ -369,7 +369,7 @@
             this.input(this.ar.reduce((p,x) => p + x) / this.ar.length);
         }
         get value(){
-            return this.input();
+            return this.input() + 21;
         }
     };
     rpgen3.addBtn(main, 'MIDIを出力', () => outputMidi()).addClass('btn');
