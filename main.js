@@ -335,7 +335,7 @@
             });
         }
         get value(){
-            return piano.note2index(this.input());
+            return piano.note2index(this.input()) + 21;
         }
     };
     const bpm = new class {
@@ -369,7 +369,7 @@
             this.input(this.ar.reduce((p,x) => p + x) / this.ar.length);
         }
         get value(){
-            return this.input() + 21;
+            return this.input();
         }
     };
     rpgen3.addBtn(main, 'MIDIを出力', () => outputMidi()).addClass('btn');
