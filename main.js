@@ -298,7 +298,7 @@
         const toI = x => rpgen3.toI(w, ...(way ? [x, horizon] : [horizon, x])),
               diff = end - start,
               minus = diff > 0 ? 1 : -1;
-        for(const i of Array(diff).keys()) {
+        for(const i of Array(Math.abs(diff)).keys()) {
             if(data[toI(start + i * minus) << 2]) { // white
                 if(isEdge) isEdge = false;
             }
