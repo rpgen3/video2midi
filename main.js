@@ -196,7 +196,13 @@
             });
         }
     };
-    rpgen3.addBtn(main, '採譜開始', () => getMidi());
+    let started = false;
+    rpgen3.addBtn(main, '採譜開始', async () => {
+        if(started) return;
+        started = true;
+        await getMidi();
+        started = false;
+    });
     const msg = new class {
         constructor(){
             this.html = $('<div>').appendTo(main);
