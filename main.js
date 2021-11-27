@@ -107,7 +107,7 @@
                 this.start,
                 this.end,
                 this.fps
-            ].map(v => v()).map(rpgen3.toHan).map(v => v.match(/[0-9]+/)?.[0]).map(Number);
+            ].map(v => v()).map(rpgen3.toHan).map(v => v.match(/[0-9\.]+/)?.[0]).map(Number);
             return {start, end, fps};
         }
     };
