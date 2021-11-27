@@ -206,9 +206,12 @@
             lums.push(luminance(...d.subarray(i, i + 3)));
         }
         const isNoteOn = [...keyboard.slice().fill(false)],
+              lumsLast = keyboard.slice().fill(-1),
+              _lumsLast = keyboard.slice().fill(-1),
               midi = [],
               frameRate = 1 / times.fps,
               tEnd = Math.min(times.end, video.video.duration);
+        const diff = (a, b) => Math.abs(a - b);
         for(let t = times.start + 1; t <= tEnd; t += frameRate) {
             await video.seek(t);
             const {currentTime} = video.video;
@@ -216,18 +219,28 @@
             const d = f();
             for(const [i, v] of keyboard.entries()) {
                 const _i = rpgen3.toI(w, v, horizon) << 2,
-                      lum = luminance(...d.subarray(_i, _i + 3)),
-                      diff = Math.abs(lum - lums[i]);
-                if(diff < 10) { // 入力無し
+                      lum = luminance(...d.subarray(_i, _i + 3));
+                if(diff(lum, lums[i]) > 10) {
+                    if(!isNoteOn[i]) {
+                        isNoteOn[i] = true; // OFF → ON
+                        midi.push(new Note(i, true, currentTime));
+                        _lumsLast[i] = lumsLast[i] = lum;
+                        continue;
+                    }
+                    if(diff(lum, lumsLast[i]) > 10) {
+                        if(diff(lum, _lumsLast[i]) > 10) {
+                            _lumsLast[i] = lum;
+                            midi.push(new Note(i, false, currentTime));
+                            midi.push(new Note(i, true, currentTime));
+                        }
+                    }
+                }
+                else {
                     if(isNoteOn[i]) {
                         isNoteOn[i] = false; // ON → OFF
                         midi.push(new Note(i, false, currentTime));
                     }
-                    continue;
                 }
-                if(isNoteOn[i]) continue;
-                isNoteOn[i] = true; // OFF → ON
-                midi.push(new Note(i, true, currentTime));
             }
         }
         g_midi = midi;
