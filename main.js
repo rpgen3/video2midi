@@ -434,7 +434,7 @@
         a.push(...DeltaTime(0));
         a.push(0xFF, 0x2F, 0x00); // トラックチャンクの終わりを示す
         arr.push(...to4byte(a.length)); // データ長(4byte)
-        for(const v of a) arr.push(v);
+        while(a.length) arr.push(a.shift());
     };
     const sec2delta = sec => sec / (60 / (bpm.value * g_timeDivision));
     const DeltaTime = n => { // 可変長数値表現
