@@ -242,11 +242,11 @@
             return ctx.getImageData(0, 0, w, h).data;
         };
         const {start, end, horizon} = bothEnd.any,
-              {toI} = calcAny(),
+              {_toI} = calcAny(),
               d = f(),
               lums = [];
         for(const v of keyboard) {
-            const i = toI(v);
+            const i = _toI(v);
             lums.push(luminance(...d.subarray(i, i + 3)));
         }
         const isNoteOn = [...keyboard.slice().fill(false)],
@@ -264,7 +264,7 @@
             msg.print(`${(currentTime * 100 | 0) / 100}/${tEnd}`);
             const d = f();
             for(const [i, v] of keyboard.entries()) {
-                const _i = toI(v),
+                const _i = _toI(v),
                       [r, g, b] = d.subarray(_i, _i + 3),
                       lum = luminance(r, g, b);
                 if(diff(lum, lums[i]) > limitLum) {
@@ -300,9 +300,13 @@
               minus = diff > 0 ? 1 : -1;
         const toI = i => {
             const v = start + minus * i;
+            return rpgen3.toI(w, ...(way ? [v, horizon] : [horizon, v])) << 2;
+        };
+        const _toI = i => {
+            const v = start + minus * i;
             return rpgen3.toI(w, ...(way ? [v, horizon + _horizon] : [horizon + _horizon, v])) << 2;
         };
-        return {toI, minus};
+        return {toI, _toI, minus};
     };
     const calcXYpianoKeyboard = () => {
         const {w, h} = image,
