@@ -158,6 +158,10 @@
                 label: '鍵盤の並ぶ位置',
                 save: true
             });
+            this._horizon = rpgen3.addInputStr(input, {
+                label: '採譜する位置(差)',
+                save: true
+            });
             this.start = rpgen3.addInputStr(input, {
                 label: '始端の中心位置',
                 save: true
@@ -168,12 +172,13 @@
             });
         }
         get any(){
-            const [start, end, horizon] = [
+            const [start, end, horizon, diff] = [
                 this.start,
                 this.end,
-                this.horizon
-            ].map(v => v()).map(rpgen3.toHan).map(v => v.match(/[0-9]+/)?.[0]).map(Number);
-            return {start, end, horizon};
+                this.horizon,
+                this._horizon
+            ].map(v => v()).map(rpgen3.toHan).map(v => v.match(/[0-9\-]+/)?.[0]).map(Number);
+            return {start, end, horizon, _horizon};
         }
     };
     const saifu = new class {
@@ -289,13 +294,13 @@
     };
     const calcAny = () => {
         const way = bothEnd.way(),
-              {start, end, horizon} = bothEnd.any,
+              {start, end, horizon, _horizon} = bothEnd.any,
               {w} = video,
               diff = end - start,
               minus = diff > 0 ? 1 : -1;
         const toI = i => {
             const v = start + minus * i;
-            return rpgen3.toI(w, ...(way ? [v, horizon] : [horizon, v])) << 2;
+            return rpgen3.toI(w, ...(way ? [v, horizon + _horizon] : [horizon + _horizon, v])) << 2;
         };
         return {toI, minus};
     };
