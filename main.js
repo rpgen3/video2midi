@@ -172,7 +172,7 @@
             });
         }
         get any(){
-            const [start, end, horizon, diff] = [
+            const [start, end, horizon, _horizon] = [
                 this.start,
                 this.end,
                 this.horizon,
